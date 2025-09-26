@@ -2,6 +2,9 @@
 node_modules
 /dist
 
+# Ignore CombineTestScene models
+public/resources/models/CombineTestScene
+
 
 # local env files
 .env.local

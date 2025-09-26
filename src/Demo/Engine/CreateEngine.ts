@@ -1,6 +1,7 @@
 import * as BABYLON from 'babylonjs';
 //Change Import Here Start
-import { Playground } from '../Scene/NoiseScene';
+import "babylonjs-inspector";
+import { Playground } from '../Scene/CombineTestScene';
 //Change Import Here End
 
 export function createEngine(canvas: HTMLCanvasElement): BABYLON.Engine {
@@ -14,8 +15,11 @@ export function createEngine(canvas: HTMLCanvasElement): BABYLON.Engine {
     const resize = () => {
         engine.resize();
     };
-
-    scene.debugLayer.show();
+    console.time("创建Engine");
+    scene.onReadyObservable.add(() => {
+        scene.debugLayer.show();
+        console.timeEnd("创建Engine");
+    })
 
     canvas.addEventListener("resize", resize);
     engine.onDisposeObservable.add(() => {

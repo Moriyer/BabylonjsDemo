@@ -8,10 +8,12 @@ if (args.length === 0) {
     console.error('请提供场景文件路径参数');
     console.error('用法: npm run setScene <scene-file-path>');
     console.error('示例: npm run setScene src/Demo/Scene/DefaultScene.ts');
+    console.error('注意: 在Windows中请使用正斜杠 / 或双引号包围路径');
     process.exit(1);
 }
 
 const inputPath = args[0];
+console.log(`🔍 接收到的原始路径参数: "${inputPath}"`);
 const projectRoot = path.resolve(__dirname, '../..');
 const createEngineFile = path.join(projectRoot, 'src/Demo/Engine/createEngine.ts');
 
@@ -19,16 +21,21 @@ const createEngineFile = path.join(projectRoot, 'src/Demo/Engine/createEngine.ts
 function normalizePath(inputPath) {
     let normalizedPath = inputPath;
     
+    // 首先标准化路径分隔符（Windows兼容性）
+    normalizedPath = normalizedPath.replace(/\\/g, '/');
+    
     // 如果是绝对路径，转换为相对路径
     if (path.isAbsolute(inputPath)) {
         normalizedPath = path.relative(projectRoot, inputPath);
+        // 再次标准化路径分隔符
+        normalizedPath = normalizedPath.replace(/\\/g, '/');
     }
-    
-    // 确保路径使用正斜杠
-    normalizedPath = normalizedPath.replace(/\\/g, '/');
     
     // 验证路径是否在Demo/Scene文件夹下
     if (!normalizedPath.includes('Demo/Scene')) {
+        console.error(`❌ 路径验证失败: ${normalizedPath}`);
+        console.error('📁 输入路径必须包含 Demo/Scene 文件夹');
+        console.error('✅ 正确示例: src/Demo/Scene/DefaultScene.ts');
         throw new Error('文件路径必须在Demo/Scene文件夹或其子文件夹下');
     }
     
