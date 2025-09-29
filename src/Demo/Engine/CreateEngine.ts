@@ -1,6 +1,9 @@
 import * as BABYLON from 'babylonjs';
-//Change Import Here Start
 import "babylonjs-inspector";
+import "babylonjs-loaders";
+import "babylonjs-serializers";
+//Change Import Here Start
+
 import { Playground } from '../Scene/CombineTestScene';
 //Change Import Here End
 

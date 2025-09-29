@@ -1,10 +1,10 @@
 
 import * as BABYLON from 'babylonjs';
-import "babylonjs-loaders";
-import "babylonjs-serializers";
+
 import { GLTF2Export } from 'babylonjs-serializers';
 import { InspectorNode } from '../Node/InspectorNode';
-import { SceneCombine, SceneCombineLoader } from '../Utils/Compress/SceneCombine';
+import { SceneCombineUtils } from '../Utils/Compress/SceneCombine';
+import { SceneCombineLoader } from '../Utils/Compress/SceneCombineLoader';
 
 export class Playground {
     public static CreateScene(engine: BABYLON.Engine, canvas: HTMLCanvasElement): BABYLON.Scene {
@@ -12,7 +12,7 @@ export class Playground {
         const scene = new BABYLON.Scene(engine);
 
         // This creates and positions a free camera (non-mesh)
-        const camera = new BABYLON.ArcRotateCamera("camera", 0, 1, 10, BABYLON.Vector3.Zero(), scene);
+        const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI, 1, 10, BABYLON.Vector3.Zero(), scene);
 
         // This targets the camera to scene origin
         camera.setTarget(BABYLON.Vector3.Zero());
@@ -87,11 +87,11 @@ export class Playground {
         })
         return root;
     }
-    static fileType = "20";
+    static fileType = "10";
     static loadOriginScene(scene: BABYLON.Scene) {
         const ExportRoot = new InspectorNode("Export", scene);
         scene.debugLayer.select(ExportRoot);
-        const metaKeys = [...SceneCombine.metaKey];
+        const metaKeys = [...SceneCombineUtils.metaKey];
         let root: BABYLON.TransformNode | null = null;
         ExportRoot.addButton("导出", "export", () => {
             GLTF2Export.GLBAsync(scene, `scene${this.fileType}_2`, {
@@ -128,17 +128,20 @@ export class Playground {
         }).then(asset => {
             root = asset.meshes[0];
             asset.addAllToScene();
-            SceneCombine.combine(asset);
-            console.log("???");
+            SceneCombineUtils.combine(asset);
         });
     }
 
     static loadCombineScene(scene: BABYLON.Scene) {
+        console.time("下载");
         BABYLON.LoadAssetContainerAsync(`resources/models/CombineTestScene/scene${this.fileType}_2.glb`, scene, {
             pluginExtension: ".glb",
         }).then(asset => {
+            console.timeEnd("下载");
+            console.time("解析");
             asset.addAllToScene();
             const target = new SceneCombineLoader(asset);
+            console.timeEnd("解析");
             console.timeEnd("创建Engine");
         });
     }

@@ -1,8 +1,6 @@
-import { InspectorNode } from '@/Demo/Node/InspectorNode';
 import * as BABYLON from 'babylonjs';
-import { getMaterialOnChangedObservable } from '../MaterialUtils';
 
-export class SceneCombine {
+export class SceneCombineUtils {
     static metaKey = [
         "meshMerge_MeshIndex",
         "meshMerge_MaterialIndex",
@@ -50,17 +48,9 @@ export class SceneCombine {
             uvs4 = [];
         }
         let meshIndex = 0;
-        const addNormals = (vdNormals: BABYLON.Nullable<BABYLON.FloatArray> | null, vdPositions: BABYLON.FloatArray, vdIndices: BABYLON.IndicesArray) => {
-            if (!vdNormals && normals.length === 0) {
-                return;
-            }
-            if (normals.length === 0) {
-                BABYLON.VertexData.ComputeNormals(positions, indices, normals);
-            }
-            if (!vdNormals) {
-                vdNormals = [];
-                BABYLON.VertexData.ComputeNormals(vdPositions, vdIndices, vdNormals);
-            }
+        const addNormals = (vdPositions: BABYLON.FloatArray, vdIndices: BABYLON.IndicesArray) => {
+            const vdNormals: number[] = [];
+            BABYLON.VertexData.ComputeNormals(vdPositions, vdIndices, vdNormals);
             normals.push(...vdNormals);
         }
         const addUVs = (UVs: number[], vdUVs: BABYLON.Nullable<BABYLON.FloatArray>, posLength: number) => {
@@ -83,6 +73,7 @@ export class SceneCombine {
             if (mesh.isAnInstance) return;
             //避免InstancedMesh
             if (mesh.hasInstances) return;
+            if (mesh.hasThinInstances) return;
             const meshVD = BABYLON.VertexData.ExtractFromMesh(mesh);
             const vdPositions = meshVD.positions;
             if (!vdPositions) return;
@@ -126,7 +117,7 @@ export class SceneCombine {
                 }
             }
             //normals
-            addNormals(meshVD.normals, vdPositions, vdIndices);
+            addNormals(vdPositions, vdIndices);
             //uvs
             addUVs(uvs, meshVD.uvs, vdPositions.length / 3);
             addUVs(uvs2, meshVD.uvs2, vdPositions.length / 3);
@@ -222,210 +213,3 @@ export class SceneCombine {
     }
 }
 
-
-export class SceneCombineLoader {
-    meshCount: number = 0;
-    materialCount: number = 0;
-    /**合并后的网格节点 */
-    combineMesheNodes: BABYLON.Mesh[] = [];
-    /**合并前的网格节点，现为TransformNode */
-    meshNodes: BABYLON.TransformNode[] = [];
-    /**材质节点 */
-    materialNodes: BABYLON.Mesh[] = [];
-
-    scene: BABYLON.Scene;
-    asset: BABYLON.AssetContainer;
-
-    meshIndexToMeshMap: Map<number, BABYLON.Mesh> = new Map();
-    materialIndexToMaterialMap: Map<number, BABYLON.StandardMaterial> = new Map();
-    meshIndexToMaterialIndexMap: Map<number, number> = new Map();
-
-    material: BABYLON.ShaderMaterial = null as any;
-    constructor(asset: BABYLON.AssetContainer) {
-        this.asset = asset;
-        this.scene = asset.scene;
-        const __root__ = asset.meshes[0] as BABYLON.Mesh;
-        const root = __root__.getChildren(undefined, true)[0];
-        const rootMeta = this.getGLTFMeta(root.metadata);
-        if (!rootMeta) {
-            console.log("根元素Meta数据丢失");
-            return;
-        }
-        //设置可视化
-        asset.getNodes().forEach(node => {
-            const gltfData = this.getGLTFMeta(node.metadata);
-            if (!gltfData) return;
-            if (gltfData.meshMerge_Enable !== undefined) {
-                node.setEnabled(gltfData.meshMerge_Enable);
-            }
-            if (gltfData.meshMerge_Visible !== undefined) {
-                (node as BABYLON.Mesh).isVisible = gltfData.meshMerge_Visible;
-            }
-        })
-
-        this.meshCount = rootMeta.meshMerge_MeshCount;
-        this.materialCount = rootMeta.meshMerge_MaterialCount;
-        this.combineMesheNodes = this.getNode(asset.meshes, "meshMerge_CombineMesh") as BABYLON.Mesh[];
-        this.meshNodes = this.getNode(asset.transformNodes, "meshMerge_MeshIndex") as BABYLON.TransformNode[];
-        this.materialNodes = this.getNode(asset.meshes, "meshMerge_MaterialMesh") as BABYLON.Mesh[];
-
-        this.meshNodes.forEach(node => {
-            const gltfData = this.getGLTFMeta(node.metadata);
-            const { meshMerge_MaterialIndex, meshMerge_MeshIndex } = gltfData;
-            this.meshIndexToMeshMap.set(meshMerge_MeshIndex, node as BABYLON.Mesh);
-            this.meshIndexToMaterialIndexMap.set(meshMerge_MeshIndex, meshMerge_MaterialIndex);
-        });
-        this.materialNodes.forEach(node => {
-            const gltfData = this.getGLTFMeta(node.metadata);
-            const materialMeshIndex = gltfData["meshMerge_MaterialMesh"] as number;
-            this.materialIndexToMaterialMap.set(materialMeshIndex, node.material as BABYLON.StandardMaterial);
-        });
-
-        this.createMaterial();
-
-        // this.createMaterial(asset.scene
-        //     combineMeshes, meshNodes, materialNodes);
-    }
-
-    private createMaterial() {
-
-        const material = new BABYLON.ShaderMaterial("meshMerge_Material", this.scene, {
-            vertexSource: this.getVertexShader(),
-            fragmentSource: this.getFragmentShader(),
-        }, {
-            attributes: ["position", 'uv4'],
-            uniforms: ["world", "viewProjection", "uWorldArray", "uColorArray"],
-            samplers: [],
-        });
-        this.material = material;
-        //设置材质
-        this.combineMesheNodes.forEach(mesh => {
-            mesh.material = material;
-            const vd = BABYLON.VertexData.ExtractFromMesh(mesh);
-        })
-
-        //配置矩阵
-        const matrixArray: Array<BABYLON.Matrix> = new Array(this.meshCount);
-        const colorArray: Array<BABYLON.Color3> = new Array(this.meshCount);
-        for (let index = 0; index < colorArray.length; index++) {
-            matrixArray[index] = BABYLON.Matrix.Identity();
-            colorArray[index] = new BABYLON.Color3(1, 1, 1);
-        }
-        material.setMatrices("uWorldArray", matrixArray);
-        material.setColor3Array("uColorArray", colorArray);
-
-        const applyMatrix = (index: number, matrix: BABYLON.Matrix) => {
-            const _matrixArrays = (material as any)._matrixArrays["uWorldArray"] as Float32Array;
-            matrix.copyToArray(_matrixArrays, index * 16);
-        }
-        const applyColor = (index: number, color: BABYLON.Color3) => {
-            const _colorArrays = (material as any)._colors3Arrays["uColorArray"] as Float32Array;
-            color.toArray(_colorArrays, index * 3);
-        }
-
-        this.scene.debugLayer.select(this.meshNodes[0]);
-        //Mesh专区
-        this.meshNodes.forEach(node => {
-            const gltfData = this.getGLTFMeta(node.metadata);
-            const { meshMerge_MaterialIndex, meshMerge_MeshIndex } = gltfData;
-            if (meshMerge_MaterialIndex === undefined || meshMerge_MeshIndex === undefined) {
-                console.log("meshMerge_MaterialIndex or meshMerge_MeshIndex is undefined");
-                return;
-            }
-            applyMatrix(meshMerge_MeshIndex, node.getWorldMatrix());
-            node.onAfterWorldMatrixUpdateObservable.add(() => {
-                applyMatrix(meshMerge_MeshIndex, node.getWorldMatrix());
-            })
-
-            colorArray[meshMerge_MeshIndex].set(Math.random(), Math.random(), Math.random());
-            applyColor(meshMerge_MeshIndex, colorArray[meshMerge_MeshIndex]);
-
-            InspectorNode.addRef(node, "颜色", "meshColor", colorArray[meshMerge_MeshIndex].clone(), (v) => {
-                applyColor(meshMerge_MeshIndex, v);
-            });
-        })
-
-        //Material
-        const setDataToMaterial = (material: BABYLON.StandardMaterial, index: number) => {
-
-        }
-
-        this.materialNodes.forEach(node => {
-            const gltfData = this.getGLTFMeta(node.metadata);
-            const materialMeshIndex = gltfData["meshMerge_MaterialMesh"] as number;
-            const onMaterialChanged = getMaterialOnChangedObservable(node.material!);
-            onMaterialChanged.add((data) => {
-                setDataToMaterial(node.material! as any, materialMeshIndex);
-            })
-        })
-    }
-
-
-    private getVertexShader() {
-        return `
-            precision highp float;
-            attribute vec3 position;
-            
-            attribute vec2 uv4;
-
-            uniform mat4 world;
-            uniform mat4 viewProjection;
-            uniform mat4 uWorldArray[${this.meshCount}];
-
-            flat varying ivec2 pData;
-            void main(){
-                vec3 positionUpdated = position;
-                pData = ivec2(uv4);
-                int meshIndex = int(uv4.x);
-                mat4 uWorld = uWorldArray[meshIndex];
-                // positionUpdated.x += mod(uv4.x,10.) * 2.;
-                // positionUpdated.y += mod(floor(uv4.x/10.),10.)* 2.;
-                // positionUpdated.z += mod(floor(uv4.x/100.),10.)* 2.;
-                gl_Position = viewProjection * uWorld * vec4(positionUpdated,1.);
-            }
-
-        `;
-    }
-
-    private getFragmentShader() {
-        return `
-            precision highp float;
-
-            // uniform vec3 uColorArray[${this.meshCount}];
-
-            flat varying ivec2 pData;
-
-            void main(){
-               
-                int meshIndex = pData.x;
-                int materialIndex = pData.y;
-
-                vec3 finColor = vec3(1.,1.,1.);
-
-                // vec3 meshColor = uColorArray[meshIndex];
-                // finColor*=meshColor;
-
-                gl_FragColor = vec4(finColor,1.);
-            }
-        
-        `;
-    }
-
-    private getGLTFMeta(metadata: any) {
-        if (!metadata) return null;
-        if (!metadata["gltf"]) return null;
-        return metadata["gltf"]["extras"] || null;
-    }
-    private getNode<T>(array: T[], key: string): T[] {
-        const results: T[] = [];
-        array.forEach(item => {
-            const meta = this.getGLTFMeta((item as any).metadata);
-            if (meta && meta[key] !== undefined) {
-                results.push(item);
-            }
-        })
-        return results;
-    }
-
-
-}

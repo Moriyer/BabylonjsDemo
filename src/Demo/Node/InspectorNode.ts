@@ -31,14 +31,16 @@ export class InspectorNode extends BABYLON.TransformNode {
             ...options
         };
         const scope = nodeTarget;
-        scope[name] = value;
+        const key = `_name`;
+        scope[key] = value;
+
         //给this添加get/set
         Object.defineProperty(scope, name, {
             get: () => {
-                return scope[name];
+                return scope[key];
             },
             set: (v) => {
-                scope[name] = v;
+                scope[key] = v;
                 onValueChange(v);
             }
         })
@@ -115,7 +117,7 @@ export class InspectorNode extends BABYLON.TransformNode {
                 console.log(`不支持的类型:${className}`);
                 return;
         }
-        console.log(className);
+        // console.log(className);
         //给this添加get/set
         Object.defineProperty(scope, name, {
             get: () => {
