@@ -383,7 +383,7 @@ void main(){
     if(meshInfo.visible<0.5) discard;
     MaterialInfo materialInfo = getMaterialInfo(fMaterialIndex);
     
-    vec3 normalW = normalize(vNormalW);
+    vec3 normalW = normalize(vNormalW) * 2. - 1.;
 
     ${bumpMain}
     ${albedoMain}
@@ -423,6 +423,7 @@ void main(){
 	vec3 finalSpecular = vec3(0.);
     vec3 color = finalDiffuse * AOColor + finalSpecular + reflectionColor.rgb + refractionColor.rgb;
     float finAlpha = ${alpha}? albedoAlpha : 1.0;
+
     gl_FragColor = vec4(color,finAlpha);
 }
         

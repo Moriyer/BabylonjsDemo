@@ -76,14 +76,14 @@ export class SceneCombineMaterial extends DisposeObject {
                 if (light.getClassName() === "DirectionalLight") {
                     const dir = light as BABYLON.DirectionalLight;
                     this.vLightSpecular.set(dir.specular.r, dir.specular.g, dir.specular.b, 1);
-                    this.vLightDiffuse.set(dir.diffuse.r, dir.diffuse.g, dir.diffuse.b, dir.range);
+                    this.vLightDiffuse.set(dir.diffuse.r * dir.intensity, dir.diffuse.g * dir.intensity, dir.diffuse.b * dir.intensity, dir.range);
                     this.vLightData.set(dir.direction.x, dir.direction.y, dir.direction.z, 1);
                 }
                 else if (light.getClassName() === "HemisphericLight") {
                     const hemis = light as BABYLON.HemisphericLight;
-                    this.vHemisLightDiffuse.set(hemis.diffuse.r, hemis.diffuse.g, hemis.diffuse.b);
+                    this.vHemisLightDiffuse.set(hemis.diffuse.r * hemis.intensity, hemis.diffuse.g * hemis.intensity, hemis.diffuse.b * hemis.intensity);
+                    this.vHemisLightGroundColor.set(hemis.groundColor.r * hemis.intensity, hemis.groundColor.g * hemis.intensity, hemis.groundColor.b * hemis.intensity);
                     this.vHemisLightSpecular.set(hemis.specular.r, hemis.specular.g, hemis.specular.b);
-                    this.vHemisLightGroundColor.set(hemis.groundColor.r, hemis.groundColor.g, hemis.groundColor.b);
                     this.vHemisLightData.set(hemis.direction.x, hemis.direction.y, hemis.direction.z, 0);
                 }
             }

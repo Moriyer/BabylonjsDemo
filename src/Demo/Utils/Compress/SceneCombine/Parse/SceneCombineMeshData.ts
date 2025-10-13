@@ -15,7 +15,7 @@ export class SceneCombineMeshData {
     }
     constructor(node: BABYLON.Node, index: number, dataTexture: DataTexture) {
         (node as any)._c_SceneCombineMeshData = this;
-        this.color.set(Math.random(), Math.random(), Math.random());
+        // this.color.set(Math.random(), Math.random(), Math.random());
         DataUtils.onUpdateCallBack(this.color, () => {
             this.onValueChanged();
         })
