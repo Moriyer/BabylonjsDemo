@@ -17,11 +17,12 @@ class MouseButton {
 
         const tap = info.type & BABYLON.PointerEventTypes.POINTERTAP;
         if (tap) {
-            console.log("tap", info)
+            // console.log("tap", info)
         }
         const double = info.type & BABYLON.PointerEventTypes.POINTERDOUBLETAP;
         if (double) {
-            console.log("double", info);
+            this.onDoubleObservable.notifyObservers(info);
+            return;
         }
         const down = info.type & BABYLON.PointerEventTypes.POINTERDOWN;
         if (down) {
@@ -53,11 +54,12 @@ class MouseButton {
 
     onUpObservable: BABYLON.Observable<BABYLON.PointerInfo> = new BABYLON.Observable<BABYLON.PointerInfo>();
     onDownObservable: BABYLON.Observable<BABYLON.PointerInfo> = new BABYLON.Observable<BABYLON.PointerInfo>();
+    onDoubleObservable: BABYLON.Observable<BABYLON.PointerInfo> = new BABYLON.Observable<BABYLON.PointerInfo>();
     onDownMoveObservable: BABYLON.Observable<BABYLON.PointerInfo> = new BABYLON.Observable<BABYLON.PointerInfo>();
 
 }
 
-export class MeshPicker extends DisposeObject {
+export class MousePicker extends DisposeObject {
     leftButton = new MouseButton(0);
     middleButton = new MouseButton(1);
     rightButton = new MouseButton(2);
